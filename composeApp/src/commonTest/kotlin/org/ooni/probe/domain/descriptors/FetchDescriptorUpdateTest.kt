@@ -18,6 +18,7 @@ import org.ooni.probe.shared.toLocalDateTime
 import org.ooni.testing.factories.DescriptorFactory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -162,6 +163,54 @@ class FetchDescriptorUpdateTest {
             assertEquals(3, outcome.attempted)
             assertEquals(3, outcome.networkFailures)
             assertTrue(outcome.shouldRetry(runAttemptCount = 0))
+        }
+
+    @Test
+    fun skipLocalDescriptors() =
+        runTest {
+            val localDescriptor = DescriptorFactory.buildInstalledModel(
+                id = Descriptor.Id("${Descriptor.LOCAL_ID_PREFIX}test"),
+                autoUpdate = true,
+            )
+            val installedDescriptor = DescriptorFactory.buildInstalledModel(autoUpdate = true)
+            val fetchedIds = mutableListOf<Descriptor.Id>()
+            val subject = subject(
+                getLatestTestDescriptors = { flowOf(listOf(localDescriptor, installedDescriptor)) },
+                fetchDescriptor = { id ->
+                    fetchedIds += id
+                    Success(installedDescriptor)
+                },
+            )
+
+            val outcome = subject(emptyList())
+
+            assertEquals(listOf(installedDescriptor.id), fetchedIds)
+            assertEquals(1, outcome.attempted)
+        }
+
+    @Test
+    fun skipLocalDescriptorWhenProvided() =
+        runTest {
+            val localDescriptor = DescriptorFactory.buildInstalledModel(
+                id = Descriptor.Id("${Descriptor.LOCAL_ID_PREFIX}test"),
+                autoUpdate = true,
+            )
+            val installedDescriptor = DescriptorFactory.buildInstalledModel(autoUpdate = true)
+            val fetchedIds = mutableListOf<Descriptor.Id>()
+            val subject = subject(
+                // Providing a local descriptor must not fall back to updating every descriptor
+                getLatestTestDescriptors = { flowOf(listOf(installedDescriptor)) },
+                fetchDescriptor = { id ->
+                    fetchedIds += id
+                    Success(installedDescriptor)
+                },
+            )
+
+            val outcome = subject(listOf(localDescriptor))
+
+            assertTrue(fetchedIds.isEmpty())
+            assertEquals(0, outcome.attempted)
+            assertFalse(outcome.shouldRetry(runAttemptCount = 0))
         }
 
     private fun subject(

@@ -131,7 +131,7 @@ data class DescriptorItem(
         get() =
             allTests.size == 1 && allTests.first().test == TestType.WebConnectivity
 
-    val runLink: String
+    val runLink: String?
         get() = descriptor.runLink
 
     val settingsPrefix: String?
@@ -139,9 +139,17 @@ data class DescriptorItem(
 
     fun isDefault(): Boolean = descriptor.isOoniDescriptor
 
+    /**
+     * Built-in descriptors ship with the app (OONI defaults and local descriptors), so they are
+     * listed together and can't be uninstalled. Local descriptors still keep their own settings
+     * prefix, so their tests don't share preferences with the OONI defaults.
+     */
+    fun isBuiltIn(): Boolean = isDefault() || descriptor.isLocalDescriptor
+
     companion object {
         val SORT_COMPARATOR =
-            compareByDescending<DescriptorItem> { !it.isDefault() }
+            compareByDescending<DescriptorItem> { !it.isBuiltIn() }
+                .thenByDescending { it.isDefault() }
                 .thenBy { it.isExpired }
                 .thenByDescending { it.descriptor.dateInstalled }
                 .thenBy { it.descriptor.id.value }

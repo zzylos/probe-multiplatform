@@ -116,7 +116,7 @@ fun DescriptorScreen(
                     NavigationBackButton({ onEvent(DescriptorViewModel.Event.BackClicked) })
                 },
                 actions = {
-                    if (!state.canPullToRefresh) {
+                    if (!state.canPullToRefresh && state.descriptor?.descriptor?.isLocalDescriptor != true) {
                         IconButton(
                             onClick = { onEvent(DescriptorViewModel.Event.FetchUpdatedDescriptor) },
                             enabled = state.isRefreshEnabled && !state.isRefreshing,
@@ -202,7 +202,9 @@ fun DescriptorScreen(
                     HorizontalDivider(Modifier.padding(bottom = 16.dp), thickness = Dp.Hairline)
                 }
 
-                ConfigureUpdates(onEvent, descriptor.descriptor.autoUpdate)
+                if (!descriptor.descriptor.isLocalDescriptor) {
+                    ConfigureUpdates(onEvent, descriptor.descriptor.autoUpdate)
+                }
 
                 Text(
                     stringResource(Res.string.AddDescriptor_Settings),
