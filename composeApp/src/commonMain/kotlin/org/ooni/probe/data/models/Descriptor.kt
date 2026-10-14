@@ -34,7 +34,9 @@ data class Descriptor(
     @Serializable
     data class Id(
         val value: String,
-    )
+    ) {
+        val isLocal get() = value.startsWith(LOCAL_ID_PREFIX)
+    }
 
     @Serializable
     data class Key(
@@ -44,6 +46,12 @@ data class Descriptor(
 
     val isOoniDescriptor get() = OoniTest.isValidId(id.value)
 
+    /**
+     * Local descriptors are bundled with the app but are not published as OONI Run links,
+     * so they can't be updated or shared through the OONI Run API.
+     */
+    val isLocalDescriptor get() = id.isLocal
+
     val key get() = Key(id, revision)
 
     val previousRevisions
@@ -51,7 +59,12 @@ data class Descriptor(
 
     val isExpired get() = expirationDate != null && expirationDate < LocalDateTime.now()
 
-    val runLink get() = "${OrganizationConfig.ooniRunDashboardUrl}/v2/${id.value}"
+    val runLink
+        get() = if (isLocalDescriptor) null else "${OrganizationConfig.ooniRunDashboardUrl}/v2/${id.value}"
+
+    companion object {
+        const val LOCAL_ID_PREFIX = "local-"
+    }
 }
 
 fun Descriptor.toDb(json: Json) =

@@ -21,6 +21,10 @@ Source: `composeApp/src/ooniMain/composeResources/files/assets/descriptors.json`
 | Circumvention | `00106` | `psiphon`, `tor` | On | On | |
 | Performance | `00107` | `ndt`, `dash`, `http_header_field_manipulation`, `http_invalid_request_line` | On | Mixed | `ndt` and `dash` are off for background runs because they use a lot of data |
 | Experimental | `00108` | `stunreachability`, `openvpn`, `vanilla_tor` | On | Off | |
+| VPNs | `local-vpns` | `web_connectivity`, `tlsping`, `quicping` | On | Off | Local group, see section 2.3 |
+| Website Blocking Methods | `local-blocking-methods` | `dnscheck`, `echcheck`, `sniblocking`, `httphostheader` | On | Off | Local group, see section 2.3 |
+| Social Media | `local-social-media` | `web_connectivity` | On | Off | Local group, see section 2.3 |
+| News Media | `local-news-media` | `web_connectivity` | On | Off | Local group, see section 2.3 |
 
 ### 2.2. News Media Scan (`dwMain`)
 
@@ -34,11 +38,42 @@ All three DW groups run `web_connectivity` against a fixed URL list bundled in t
 | Selected (inter)national media | `10005` | 90 | On | On | A curated list of national and international news sites |
 | Global media | `10006` | 222 | On | On | A broad list of media sites worldwide |
 
+### 2.3. Local test groups
+
+Local test groups ship inside `descriptors.json` like the others, but they are not published as OONI Run links. Their ID starts with `local-` (`Descriptor.LOCAL_ID_PREFIX`), which can never match an OONI Run link ID, and the app treats them differently from other bundled groups:
+
+* `FetchDescriptorsUpdates` never asks the OONI Run API for updates, so they only change with app updates.
+* They are listed with the OONI tests, but keep their own settings prefix, so their nettests don't share settings with the OONI default groups.
+* They have no share link, update switch or uninstall button. They are bootstrapped again on every app start, so uninstalling would not stick.
+* Measurements are not annotated with an `ooni_run_link_id`.
+* Their manual and background run defaults come from the `is_manual_run_enabled_default` and `is_background_run_enabled_default` fields in `descriptors.json`, see section 3.
+
+| Group | ID | Nettests and inputs |
+| :--- | :--- | :--- |
+| VPNs | `local-vpns` | `web_connectivity` on 26 VPN and circumvention tool websites, `tlsping` on 5 VPN sign-in and tunnel servers, `quicping` on iCloud Private Relay with Google and Cloudflare as a baseline |
+| Website Blocking Methods | `local-blocking-methods` | `dnscheck` and `echcheck` with the engine default inputs, `sniblocking` and `httphostheader` on 10 domains |
+| Social Media | `local-social-media` | `web_connectivity` on 26 social media, video and messaging websites |
+| News Media | `local-news-media` | `web_connectivity` on 26 international news and press freedom websites |
+
+Every nettest other than `web_connectivity` maps to `TestType.Experimental`, so the app does not flag anomalies for it. Its details are on OONI Explorer.
+
+`BundledDescriptorsTest` checks that local groups only use nettests that the bundled engine can run without a check-in feature flag, with inputs in the format each nettest expects.
+
+#### VPN protocol tests that are not included
+
+As of oonimkall `3.30.0`, the engine has no WireGuard, IPsec or other VPN protocol experiment. The VPN related experiments it has can't be used by local groups:
+
+* `openvpn` is disabled by the check-in API (`openvpn_enabled: false`). It is enabled by default in the engine, so `OONI_FORCE_ENABLE_EXPERIMENT` can't turn it back on.
+* `riseupvpn` is disabled by default in the engine, and the check-in API never enables it.
+* `portfiltering` connects to `127.0.0.1` until OONI deploys its test helper.
+
+Adding more VPN protocol tests needs a new experiment in [probe-cli](https://github.com/ooni/probe-cli) and a new engine release.
+
 ## 3. Nettest defaults
 
 The manual and background defaults come from `TestType` (`composeApp/src/commonMain/kotlin/org/ooni/engine/models/TestType.kt`). `PreferenceRepository.defaultPreferenceValue` reads `TestType.isManualRunEnabled` or `TestType.isBackgroundRunEnabled` when the user has not set a value yet.
 
-The `is_manual_run_enabled_default` and `is_background_run_enabled_default` fields in `descriptors.json` are parsed into `NetTest`, but they do not drive these defaults. In the bundled assets every nettest has both fields set to `false`.
+The `is_manual_run_enabled_default` and `is_background_run_enabled_default` fields in `descriptors.json` are parsed into `NetTest`, but they only drive the defaults of local test groups (section 2.3). In the other bundled descriptors every nettest has both fields set to `false`. Local groups are on for manual runs and off for background runs.
 
 | Group | Nettest | Manual run | Background run | Preference key |
 | :--- | :--- | :---: | :---: | :--- |

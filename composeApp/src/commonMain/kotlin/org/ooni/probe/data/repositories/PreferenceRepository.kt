@@ -173,7 +173,7 @@ class PreferenceRepository(
         dataStore.data
             .map {
                 it[booleanPreferencesKey(getNetTestKey(descriptor, netTest, isAutoRun))]
-                    ?: netTest.defaultPreferenceValue(isAutoRun)
+                    ?: defaultPreferenceValue(descriptor, netTest, isAutoRun)
             }.distinctUntilChanged()
 
     fun areNetTestsEnabled(
@@ -185,7 +185,7 @@ class PreferenceRepository(
                 list.associate { (descriptor, netTest) ->
                     Pair(descriptor, netTest) to (
                         it[booleanPreferencesKey(getNetTestKey(descriptor, netTest, isAutoRun))]
-                            ?: netTest.defaultPreferenceValue(isAutoRun)
+                            ?: defaultPreferenceValue(descriptor, netTest, isAutoRun)
                     )
                 }
             }.distinctUntilChanged()
@@ -209,7 +209,7 @@ class PreferenceRepository(
         dataStore.edit {
             list.forEach { (descriptor, netTest) ->
                 it[booleanPreferencesKey(getNetTestKey(descriptor, netTest, isAutoRun))] =
-                    netTest.defaultPreferenceValue(isAutoRun)
+                    defaultPreferenceValue(descriptor, netTest, isAutoRun)
             }
         }
     }
@@ -250,6 +250,17 @@ class PreferenceRepository(
             .map { it.contains(preferenceKeyFromSettingsKey(key).preferenceKey) }
             .firstOrNull() ?: false
 
-    private fun NetTest.defaultPreferenceValue(isAutoRun: Boolean): Boolean =
-        if (isAutoRun) test.isBackgroundRunEnabled else test.isManualRunEnabled
+    private fun defaultPreferenceValue(
+        descriptor: DescriptorItem,
+        netTest: NetTest,
+        isAutoRun: Boolean,
+    ): Boolean =
+        if (descriptor.descriptor.isLocalDescriptor) {
+            // Local descriptors ship with the app, so we can trust their own defaults
+            if (isAutoRun) netTest.isBackgroundRunEnabled else netTest.isManualRunEnabled
+        } else if (isAutoRun) {
+            netTest.test.isBackgroundRunEnabled
+        } else {
+            netTest.test.isManualRunEnabled
+        }
 }

@@ -163,7 +163,8 @@ class Engine(
                 flavor = platformInfo.buildSoftwareName(taskOrigin),
                 origin = taskOrigin,
                 osVersion = platformInfo.osVersion,
-                ooniRunLinkId = descriptorId.value,
+                // Local descriptors are not OONI Run links, so they have no link ID to report
+                ooniRunLinkId = descriptorId.value.takeUnless { descriptorId.isLocal },
                 installerStore = platformInfo.installerStore,
                 passportVersion = SharedBuildConfig.PASSPORT_VERSION,
             ),

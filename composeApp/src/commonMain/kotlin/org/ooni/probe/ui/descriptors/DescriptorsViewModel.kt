@@ -134,12 +134,12 @@ class DescriptorsViewModel(
         listOf(
             DescriptorSection(
                 type = DescriptorType.Installed,
-                descriptors = filter { !it.isDefault() },
+                descriptors = filter { !it.isBuiltIn() },
                 isCollapsed = collapsedSections.contains(DescriptorType.Installed),
             ),
             DescriptorSection(
                 type = DescriptorType.Default,
-                descriptors = filter { it.isDefault() },
+                descriptors = filter { it.isBuiltIn() },
                 isCollapsed = collapsedSections.contains(DescriptorType.Default),
             ),
         )

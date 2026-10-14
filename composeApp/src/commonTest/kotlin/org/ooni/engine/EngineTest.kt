@@ -21,6 +21,7 @@ import org.ooni.probe.shared.Platform
 import org.ooni.probe.shared.PlatformInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EngineTest {
@@ -54,9 +55,33 @@ class EngineTest {
             assertEquals(listOf("https://ooni.org"), settings.inputs)
             assertEquals(NetworkType.NoInternet, settings.annotations.networkType)
             assertEquals(ResolverType.PrivateDns, settings.annotations.resolverType)
+            assertEquals(OoniTest.Websites.id, settings.annotations.ooniRunLinkId)
             assertTrue(
                 bridge.lastStartTaskSettingsSerialized!!.contains("\"resolver_type\":\"private_dns\""),
             )
+        }
+
+    @Test
+    fun startTaskForLocalDescriptorHasNoRunLinkId() =
+        runTest {
+            val bridge = TestOonimkallBridge()
+            bridge.addNextEvents("""{"key":"status.started","value":{}}""")
+            val engine = buildEngine(bridge)
+
+            engine
+                .startTask(
+                    NetTest(
+                        test = TestType.Experimental("tlsping"),
+                        inputs = listOf("tlshandshake://example.org:443"),
+                    ),
+                    taskOrigin = TaskOrigin.OoniRun,
+                    descriptorId = Descriptor.Id("${Descriptor.LOCAL_ID_PREFIX}test"),
+                ).toList()
+
+            val settings =
+                json.decodeFromString<TaskSettings>(bridge.lastStartTaskSettingsSerialized!!)
+            assertEquals("tlsping", settings.name)
+            assertNull(settings.annotations.ooniRunLinkId)
         }
 
     @Test

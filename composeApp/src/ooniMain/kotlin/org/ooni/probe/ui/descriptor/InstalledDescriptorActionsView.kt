@@ -127,7 +127,8 @@ fun InstalledDescriptorActionsView(
         }
 
         Row {
-            if (descriptor.isOoniDescriptor.not()) {
+            // Built-in descriptors are bootstrapped on every app start, so they can't be uninstalled
+            if (!descriptor.isOoniDescriptor && !descriptor.isLocalDescriptor) {
                 Button(
                     onClick = { showDialog = true },
                     colors = ButtonDefaults.buttonColors(

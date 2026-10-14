@@ -2,13 +2,21 @@ package org.ooni.probe.data.repositories
 
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.ooni.engine.models.TestType
+import org.ooni.probe.data.models.Descriptor
+import org.ooni.probe.data.models.DescriptorItem
+import org.ooni.probe.data.models.NetTest
 import org.ooni.probe.data.models.SettingsKey
+import org.ooni.probe.data.models.UpdateStatus
 import org.ooni.testing.createPreferenceDataStore
+import org.ooni.testing.factories.DescriptorFactory
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PreferenceRepositoryTest {
     private lateinit var preferenceRepository: PreferenceRepository
@@ -125,4 +133,45 @@ class PreferenceRepositoryTest {
             preferenceRepository.setValueByKey(SettingsKey.LANGUAGE_SETTING, value)
             assertEquals(true, preferenceRepository.contains(SettingsKey.LANGUAGE_SETTING))
         }
+
+    @Test
+    fun netTestDefaultsComeFromTestType() =
+        runTest {
+            // Descriptors from the OONI Run API don't set reliable defaults, so they're ignored
+            val netTest = NetTest(
+                test = TestType.WebConnectivity,
+                isManualRunEnabled = false,
+                isBackgroundRunEnabled = false,
+            )
+            val descriptor = buildDescriptor(Descriptor.Id("10004"), netTest)
+
+            assertTrue(preferenceRepository.isNetTestEnabled(descriptor, netTest, isAutoRun = false).first())
+            assertTrue(preferenceRepository.isNetTestEnabled(descriptor, netTest, isAutoRun = true).first())
+        }
+
+    @Test
+    fun localNetTestDefaultsComeFromDescriptor() =
+        runTest {
+            val netTest = NetTest(
+                test = TestType.WebConnectivity,
+                isManualRunEnabled = true,
+                isBackgroundRunEnabled = false,
+            )
+            val descriptor = buildDescriptor(Descriptor.Id("${Descriptor.LOCAL_ID_PREFIX}test"), netTest)
+
+            assertTrue(preferenceRepository.isNetTestEnabled(descriptor, netTest, isAutoRun = false).first())
+            assertFalse(preferenceRepository.isNetTestEnabled(descriptor, netTest, isAutoRun = true).first())
+
+            preferenceRepository.setAreNetTestsEnabled(listOf(descriptor to netTest), isAutoRun = true, isEnabled = true)
+
+            assertTrue(preferenceRepository.isNetTestEnabled(descriptor, netTest, isAutoRun = true).first())
+        }
+
+    private fun buildDescriptor(
+        id: Descriptor.Id,
+        netTest: NetTest,
+    ) = DescriptorItem(
+        descriptor = DescriptorFactory.buildInstalledModel(id = id, netTests = listOf(netTest)),
+        updateStatus = UpdateStatus.NoNewUpdate,
+    )
 }

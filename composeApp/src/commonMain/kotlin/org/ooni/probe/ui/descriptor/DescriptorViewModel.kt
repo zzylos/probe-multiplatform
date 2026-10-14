@@ -287,7 +287,8 @@ class DescriptorViewModel(
             .filterIsInstance<Event.ShareClicked>()
             .onEach {
                 val descriptor = state.value.descriptor ?: return@onEach
-                val message = "${descriptor.name} ${descriptor.runLink}"
+                val runLink = descriptor.runLink ?: return@onEach
+                val message = "${descriptor.name} $runLink"
                 if (!launchAction(PlatformAction.Share(message))) {
                     _state.update { state -> state.copy(copyMessageToClipboard = message) }
                 }
@@ -347,7 +348,7 @@ class DescriptorViewModel(
                 tests.size -> ToggleableState.On
                 else -> ToggleableState.Indeterminate
             }
-        val isRefreshEnabled get() = descriptor?.descriptor != null
+        val isRefreshEnabled get() = descriptor?.descriptor?.isLocalDescriptor == false
     }
 
     sealed interface Event {

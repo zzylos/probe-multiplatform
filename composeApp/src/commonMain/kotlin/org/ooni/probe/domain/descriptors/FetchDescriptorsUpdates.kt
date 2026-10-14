@@ -20,7 +20,10 @@ class FetchDescriptorsUpdates(
     private val updateState: ((DescriptorsUpdateState) -> DescriptorsUpdateState) -> Unit,
 ) {
     suspend operator fun invoke(descriptorsProvided: List<Descriptor>): DescriptorUpdateOutcome {
-        val descriptors = descriptorsProvided.ifEmpty { getLatestTestDescriptors().first() }
+        val descriptors = descriptorsProvided
+            .ifEmpty { getLatestTestDescriptors().first() }
+            // Local descriptors don't exist in the OONI Run API, they only change with app updates
+            .filterNot { it.isLocalDescriptor }
 
         updateState {
             DescriptorsUpdateState(
